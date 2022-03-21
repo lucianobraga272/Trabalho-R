@@ -1,0 +1,139 @@
+<!-- Gestão de Projetos IA e Linguagem R -->
+
+<!-- Trabalho para entregar na segunda-feira (14-03-2022) -->
+
+<!-- Autor: Luciano Braga Gonçalves -->
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+library(magrittr)
+#Dataframe com estatisticas da Premier League (temporada 2006/2007 até 2017/2018) 
+df_premier <- read.csv("premier_stats_2006-2018.csv", stringsAsFactors = TRUE)
+#https://www.kaggle.com/zaeemnalla/premier-league?select=stats.csv
+dim(df_premier)
+```
+
+```{r}
+sapply(df_premier, function(x) sum(is.na(x)))
+```
+
+```{r}
+sum(is.na(df_premier))
+```
+
+```{r}
+premier_clean <- df_premier %>%
+  select(team, wins, losses, goals, total_yel_card, total_red_card, goals_conceded, season)
+#selecionei as colunas que interessam
+
+premier_clean["draws"] <- 38 - (premier_clean$wins + premier_clean$losses)
+premier_clean["points"] <- (premier_clean$wins*3) + premier_clean$draws
+#criei novas colunas para n° de empates e pontos conquistados
+
+premier_clean <- select(premier_clean, team, points, wins, draws, losses, goals, total_yel_card, total_red_card, goals_conceded, season)
+#alterei a ordem das colunas
+
+premier_clean
+```
+
+```{r}
+sum(is.na(premier_clean))
+#as colunas que vou usar não possuem NAs
+
+```
+
+```{r}
+total_wins = group_by(premier_clean,team)%>%summarise(wins_total=sum(wins))
+arrange(total_wins,desc(wins_total))
+
+
+```
+
+```{r}
+total_losses = group_by(premier_clean,team)%>%summarise(losses_total=sum(losses))
+arrange(total_losses,desc(losses_total))
+
+```
+
+```{r}
+total_goals = group_by(premier_clean,team)%>%summarise(goals_total=sum(goals))
+arrange(total_goals,desc(goals_total))
+```
+
+```{r}
+total_points = group_by(premier_clean,team)%>%summarise(points_total=sum(points))
+arrange(total_points,desc(points_total))
+```
+
+```{r}
+#Temporada com mais gols por jogo
+most_goals = group_by(premier_clean,season) %>%
+  summarise(goals_mean=round(sum(goals)/380,2))
+  
+most_goals %>%
+  ggplot(aes(x = season, y = goals_mean)) +
+  geom_col(aes(color=season)) +
+  labs(title = "Media de Gols por Jogo",
+       x="Temporada",
+       y="Gols por jogo",
+       color="Temporada")
+```
+
+```{r}
+library(gridExtra)
+#cartões amerelos e vermelhos por temporada
+most_cards = group_by(premier_clean,season)%>%summarise(red_cards=sum(total_red_card), yellow_cards = sum(total_yel_card))
+
+ggplot(most_cards, aes(x = red_cards, 
+                    y = yellow_cards)) +
+  geom_point(aes(color = season)) +
+  labs(
+    title = "Cartões por Temporada",
+    subtitle = NULL,
+    caption = NULL,
+    x = "Cartões Vermelhos",
+    y = "Cartões Amarelos",
+    colour = "Temporada"
+  )
+
+```
+
+```{r}
+#pontuação campeã 
+most_points = group_by(premier_clean,season)%>%summarise(max_points=max(points))
+most_points %>%
+  ggplot(aes(season, max_points, colour=season, size = max_points)) +
+  geom_point() +
+  labs(
+    title = "Pontuação do Campeão de Cada Temporada",
+    subtitle = NULL,
+    caption = "2006-2007 a 2017-2018",
+    x = "Temporada",
+    y = "Pontos",
+    colour = "Temporada",
+    size = "Pontos"
+  )
+```
+
+```{r}
+#temporada e times que fizeram mais pontos}
+season_team_maxpoints = group_by(premier_clean,season, team)%>%summarise(max_points=max(points))
+
+season_team_maxpoints = season_team_maxpoints %>%
+  filter(max_points>=87)
+
+season_team_maxpoints
+```
+
+```{r}
+
+season_team_maxpoints %>%
+  ggplot(aes(x = team, y = max_points, fill = season)) +
+  geom_col() +
+  labs(title = "Times que Fizeram mais de 86 pontos em uma temporada",
+       y = "Total de pontos",
+       x = "Times",
+       fill = "Temporada")
+```
